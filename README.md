@@ -1,91 +1,76 @@
-archsync
----------
+# archsync
 
-archsync is a simple, fast CLI tool written in Rust for Arch Linux.
-It lets you SAVE and RESTORE all your installed packages, including
-official repo packages (via pacman) and AUR packages (via yay or paru).
+[![CI](https://github.com/nochinsky/archsync/actions/workflows/ci.yml/badge.svg)](https://github.com/nochinsky/archsync/actions/workflows/ci.yml)
 
-This makes it easy to quickly replicate your Arch setup on a fresh install.
+Save and restore your explicitly installed Arch Linux packages with a small Rust CLI.
+Official repository packages and foreign packages are recorded separately in an editable TOML snapshot.
 
-------------------------------------------
-Features
-------------------------------------------
-- Saves all explicitly installed packages into a clean TOML file
-- Separates official repo packages vs AUR packages
-- Automatically restores your entire package list
-- Colorful, user-friendly output
-- Small and fast (written in Rust)
+## Install
 
-------------------------------------------
-Usage
-------------------------------------------
+Build from source with Rust and Cargo:
 
-Save your current packages:
+```sh
+git clone https://github.com/nochinsky/archsync.git
+cd archsync
+cargo build --release --locked
+sudo install -m 755 target/release/archsync /usr/local/bin/archsync
+```
 
-    archsync save
+Precompiled binaries, when available, are listed on the [Releases page](https://github.com/nochinsky/archsync/releases).
 
-This creates a file called 'archpkglist.toml' listing all your packages.
+## Save a package list
 
-Restore on a new system:
+Run this on your existing Arch system:
 
-    archsync restore
+```sh
+archsync save
+```
 
-This reads 'archpkglist.toml' and reinstalls everything using pacman for
-repo packages and yay (or paru) for AUR packages.
+This writes `archpkglist.toml` in the current directory. It records explicitly installed packages, separating official packages into `[repo]` and foreign packages into `[aur]`.
 
-An AUR helper is only required when the snapshot contains an enabled AUR
-package. Snapshots with only repo packages can be restored with pacman alone;
-an absent or empty AUR section, or entries set to false, do not require yay or paru.
+```toml
+timestamp = "2026-10-12T00:00:00Z"
 
-------------------------------------------
-Get the ready-to-use binary
-------------------------------------------
+[repo]
+git = true
+neovim = true
 
-You can also download a precompiled version from the GitHub Releases page:
+[aur]
+example-aur-package = false
+```
 
-    https://github.com/tracsion/archsync/releases
+Package names in the example are illustrative. Set an entry to `false` to skip it during restoration.
+Keep a copy of the snapshot before running `save` again, which overwrites the current file.
 
-Then just make it executable and move it to your path:
+## Restore a package list
 
-    chmod +x archsync
-    sudo mv archsync /usr/local/bin/
+Copy the snapshot to the target system, change to its directory, and run:
 
-------------------------------------------
-Build it yourself
-------------------------------------------
+```sh
+archsync restore
+```
 
-If you prefer to compile from source, you need Rust installed. Then run:
+- Official packages are installed with `sudo pacman -S --needed`.
+- Enabled AUR entries are installed with `yay -S --needed`, falling back to `paru` when yay is unavailable.
+- An AUR helper is required only when an `[aur]` entry is `true`. An absent or empty AUR section, or one containing only disabled entries, needs no helper.
+- A required helper is checked before package installation starts. Package manager prompts remain interactive.
 
-    git clone https://github.com/tracsion/archsync.git
-    cd archsync
-    cargo build --release
+Review foreign packages before restoring: packages reported by `pacman -Qm` are not necessarily available from the AUR.
+The snapshot records package names and selection flags; it does not pin versions, back up configuration files, or remove extra packages from the target system.
 
-Copy the binary to your system path:
+## Requirements
 
-    sudo cp target/release/archsync /usr/local/bin/
+Arch Linux, `pacman`, and `sudo` for official package installation. Install `yay` or `paru` separately when your snapshot needs AUR packages.
 
-------------------------------------------
-Dependencies
-------------------------------------------
+## Development
 
-- Arch Linux
-- pacman (standard on Arch)
-- yay or paru for AUR support
+```sh
+cargo test --locked
+cargo clippy --locked --all-targets -- -D warnings
+```
 
-If you don’t have yay:
+The restore regression tests run the real CLI with mocked package managers; they do not install packages on the test machine.
 
-    git clone https://aur.archlinux.org/yay.git
-    cd yay
-    makepkg -si
+## License
 
-OR you can just install paru hehe:)
-
-------------------------------------------
-License
-------------------------------------------
-
-MIT License. See LICENSE file for details.
-
-------------------------------------------
-
-Enjoy your fast Arch package snapshot & restore tool!
+[MIT](LICENSE).
