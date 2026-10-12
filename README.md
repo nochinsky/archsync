@@ -33,6 +33,10 @@ Restore on a new system:
 This reads 'archpkglist.toml' and reinstalls everything using pacman for
 repo packages and yay (or paru) for AUR packages.
 
+An AUR helper is only required when the snapshot contains an enabled AUR
+package. Snapshots with only repo packages can be restored with pacman alone;
+an absent or empty AUR section, or entries set to false, do not require yay or paru.
+
 ------------------------------------------
 Get the ready-to-use binary
 ------------------------------------------
