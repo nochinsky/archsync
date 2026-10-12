@@ -94,11 +94,17 @@ fn restore() -> Result<()> {
         std::process::exit(1);
     }
 
-    // Detect AUR helper
-    let aur_helper = if Command::new("yay").arg("--version").output().is_ok() {
-        "yay"
+    // Only require an AUR helper when the snapshot enables an AUR package.
+    let aur = doc.get("aur").and_then(|i| i.as_table());
+    let needs_aur_helper = aur.is_some_and(|table| {
+        table.iter().any(|(_, val)| val.as_bool().unwrap_or(false))
+    });
+    let aur_helper = if !needs_aur_helper {
+        None
+    } else if Command::new("yay").arg("--version").output().is_ok() {
+        Some("yay")
     } else if Command::new("paru").arg("--version").output().is_ok() {
-        "paru"
+        Some("paru")
     } else {
         eprintln!("{}", "Neither 'yay' nor 'paru' found for AUR support.".yellow());
         eprintln!("Install one by: git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si");
@@ -125,7 +131,7 @@ fn restore() -> Result<()> {
     }
 
     // Install AUR packages
-    if let Some(aur) = doc.get("aur").and_then(|i| i.as_table()) {
+    if let (Some(aur), Some(aur_helper)) = (aur, aur_helper) {
         println!("{} {}", "Installing AUR packages with".blue(), aur_helper);
         for (pkg, val) in aur.iter() {
             if val.as_bool().unwrap_or(false) {
